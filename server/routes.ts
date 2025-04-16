@@ -17,77 +17,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   // ==================== AUTH ROUTES ====================
-  
-  // Register a new user
-  app.post('/api/auth/register', async (req: Request, res: Response) => {
-    try {
-      const data = userRegistrationSchema.parse(req.body);
-      
-      // Check if username already exists
-      const existingUser = await storage.getUserByUsername(data.username);
-      if (existingUser) {
-        return res.status(400).json({ message: 'Username already exists' });
-      }
-      
-      // Create user
-      const { confirmPassword, ...userData } = data;
-      const user = await storage.createUser(userData);
-      
-      // Return user without password
-      const { password, ...userWithoutPassword } = user;
-      res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid input', errors: error.format() });
-      }
-      res.status(500).json({ message: 'Failed to register user' });
-    }
-  });
-  
-  // Login user
-  app.post('/api/auth/login', async (req: Request, res: Response) => {
-    try {
-      const data = userLoginSchema.parse(req.body);
-      
-      const user = await storage.getUserByUsername(data.username);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid username or password' });
-      }
-      
-      if (user.password !== data.password) {
-        return res.status(401).json({ message: 'Invalid username or password' });
-      }
-      
-      // Return user without password
-      const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: 'Invalid input', errors: error.format() });
-      }
-      res.status(500).json({ message: 'Failed to login' });
-    }
-  });
-
-  // Get current user
-  app.get('/api/auth/user', async (req: Request, res: Response) => {
-    try {
-      // For demo purposes, we'll just return the first user
-      // In a real application, this would use session/JWT tokens
-      const users = Array.from((storage as any).users.values());
-      
-      if (users.length === 0) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-      
-      const user = users[0];
-      const { password, ...userWithoutPassword } = user;
-      
-      res.json(userWithoutPassword);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to get user' });
-    }
-  });
+  // Auth routes are handled by setupAuth() in server/auth.ts
   
   // ==================== USER PROFILE ROUTES ====================
   
