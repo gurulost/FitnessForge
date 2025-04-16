@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, date, timestamp, json, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, date, timestamp, json, uuid, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User table
 export const users = pgTable("users", {
@@ -14,10 +15,21 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const usersRelations = relations(users, ({ one, many }) => ({
+  profile: one(userProfiles, {
+    fields: [users.id],
+    references: [userProfiles.userId],
+  }),
+  workoutPlans: many(workoutPlans),
+  loggedWorkouts: many(loggedWorkouts),
+  progressPhotos: many(progressPhotos),
+  progressMetrics: many(progressMetrics),
+}));
+
 // User profile information
 export const userProfiles = pgTable("user_profiles", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
   age: integer("age"),
   sex: text("sex"),
   heightFeet: integer("height_feet"),
@@ -41,21 +53,36 @@ export const userProfiles = pgTable("user_profiles", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
 // Workouts assigned to users
 export const workoutPlans = pgTable("workout_plans", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   focus: text("focus"),
   duration: integer("duration").notNull(),
   workoutType: text("workout_type"),
   difficulty: text("difficulty"),
-  planData: json("plan_data"),
+  planData: jsonb("plan_data"),
   aiFeedback: text("ai_feedback"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const workoutPlansRelations = relations(workoutPlans, ({ one, many }) => ({
+  user: one(users, {
+    fields: [workoutPlans.userId],
+    references: [users.id],
+  }),
+  loggedWorkouts: many(loggedWorkouts),
+}));
 
 // Exercise library
 export const exercises = pgTable("exercises", {
@@ -73,39 +100,64 @@ export const exercises = pgTable("exercises", {
 // Logged workouts completed by users
 export const loggedWorkouts = pgTable("logged_workouts", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  workoutPlanId: integer("workout_plan_id").references(() => workoutPlans.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  workoutPlanId: integer("workout_plan_id").references(() => workoutPlans.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   date: timestamp("date").notNull(),
   duration: integer("duration"),
   notes: text("notes"),
   rating: integer("rating"),
-  exerciseData: json("exercise_data"),
+  exerciseData: jsonb("exercise_data"),
   aiFeedback: text("ai_feedback"),
 });
+
+export const loggedWorkoutsRelations = relations(loggedWorkouts, ({ one }) => ({
+  user: one(users, {
+    fields: [loggedWorkouts.userId],
+    references: [users.id],
+  }),
+  workoutPlan: one(workoutPlans, {
+    fields: [loggedWorkouts.workoutPlanId],
+    references: [workoutPlans.id],
+  }),
+}));
 
 // Progress photos
 export const progressPhotos = pgTable("progress_photos", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   photoUrl: text("photo_url").notNull(),
   caption: text("caption"),
   date: timestamp("date").defaultNow(),
 });
 
+export const progressPhotosRelations = relations(progressPhotos, ({ one }) => ({
+  user: one(users, {
+    fields: [progressPhotos.userId],
+    references: [users.id],
+  }),
+}));
+
 // Progress metrics
 export const progressMetrics = pgTable("progress_metrics", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   date: timestamp("date").defaultNow(),
   weight: integer("weight"),
-  bodyFat: integer("body_fat"),
-  chestMeasurement: integer("chest_measurement"),
-  waistMeasurement: integer("waist_measurement"),
-  hipsMeasurement: integer("hips_measurement"),
-  armsMeasurement: integer("arms_measurement"),
-  thighsMeasurement: integer("thighs_measurement"),
+  bodyFat: real("body_fat"),
+  chestMeasurement: real("chest_measurement"),
+  waistMeasurement: real("waist_measurement"),
+  hipsMeasurement: real("hips_measurement"),
+  armsMeasurement: real("arms_measurement"),
+  thighsMeasurement: real("thighs_measurement"),
 });
+
+export const progressMetricsRelations = relations(progressMetrics, ({ one }) => ({
+  user: one(users, {
+    fields: [progressMetrics.userId],
+    references: [users.id],
+  }),
+}));
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
