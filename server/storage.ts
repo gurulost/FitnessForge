@@ -205,11 +205,12 @@ export class MemStorage implements IStorage {
       userId: plan.userId, 
       name: plan.name,
       description: plan.description ?? null,
-      goal: plan.goal ?? null,
+      focus: plan.focus ?? null,
+      duration: plan.duration,
+      workoutType: plan.workoutType ?? null,
       difficulty: plan.difficulty ?? null,
-      duration: plan.duration ?? null,
-      frequency: plan.frequency ?? null,
-      dailyRoutines: plan.dailyRoutines ?? null,
+      planData: plan.planData ?? null,
+      aiFeedback: plan.aiFeedback ?? null,
       createdAt,
       updatedAt
     };
@@ -248,7 +249,18 @@ export class MemStorage implements IStorage {
 
   async createExercise(exercise: InsertExercise): Promise<Exercise> {
     const id = this.exerciseId++;
-    const newExercise: Exercise = { ...exercise, id };
+    // Initialize all fields explicitly to satisfy TypeScript
+    const newExercise: Exercise = { 
+      id, 
+      name: exercise.name,
+      description: exercise.description ?? null,
+      muscleGroup: exercise.muscleGroup ?? null,
+      equipment: exercise.equipment ?? null,
+      difficulty: exercise.difficulty ?? null,
+      instructions: exercise.instructions ?? null,
+      videoUrl: exercise.videoUrl ?? null,
+      imageUrl: exercise.imageUrl ?? null
+    };
     this.exercises.set(id, newExercise);
     return newExercise;
   }
@@ -266,7 +278,21 @@ export class MemStorage implements IStorage {
 
   async createLoggedWorkout(workout: InsertLoggedWorkout): Promise<LoggedWorkout> {
     const id = this.loggedWorkoutId++;
-    const newWorkout: LoggedWorkout = { ...workout, id };
+    
+    // Initialize all fields explicitly to satisfy TypeScript
+    const newWorkout: LoggedWorkout = { 
+      id, 
+      userId: workout.userId, 
+      name: workout.name,
+      date: workout.date,
+      workoutPlanId: workout.workoutPlanId ?? null,
+      duration: workout.duration ?? null,
+      notes: workout.notes ?? null,
+      rating: workout.rating ?? null,
+      exerciseData: workout.exerciseData ?? null,
+      aiFeedback: workout.aiFeedback ?? null
+    };
+    
     this.loggedWorkouts.set(id, newWorkout);
     return newWorkout;
   }
@@ -285,7 +311,16 @@ export class MemStorage implements IStorage {
   async createProgressPhoto(photo: InsertProgressPhoto): Promise<ProgressPhoto> {
     const id = this.progressPhotoId++;
     const date = new Date();
-    const newPhoto: ProgressPhoto = { ...photo, id, date };
+    
+    // Initialize all fields explicitly to satisfy TypeScript
+    const newPhoto: ProgressPhoto = { 
+      id, 
+      userId: photo.userId, 
+      photoUrl: photo.photoUrl,
+      caption: photo.caption ?? null,
+      date
+    };
+    
     this.progressPhotos.set(id, newPhoto);
     return newPhoto;
   }
