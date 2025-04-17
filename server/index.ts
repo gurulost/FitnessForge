@@ -1,20 +1,50 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express, { type Request as ExpressRequest, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
-// Security packages temporarily disabled for compatibility
+// Comment out security packages that need type declarations
+// We'll address their functionality with inline comments
 // import helmet from 'helmet';
 // import rateLimit from 'express-rate-limit';
 // import csurf from 'csurf';
 // import cookieParser from 'cookie-parser';
 
+// Extend Express Request interface to include cookies
+interface Request extends ExpressRequest {
+  cookies?: Record<string, string>;
+}
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Security middlewares (temporarily disabled)
-// app.use(helmet());
-// app.use(cookieParser());
+// Security middlewares - disabled until type issues are resolved
+// Using manual security headers instead of helmet 
+app.use((req, res, next) => {
+  // Set security headers manually
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.anthropic.com;");
+  next();
+});
+
+// Cookie parser implemented manually for now
+app.use((req, res, next) => {
+  if (!req.cookies && req.headers.cookie) {
+    req.cookies = {};
+    req.headers.cookie.split(';').forEach(cookie => {
+      const parts = cookie.match(/(.*?)=(.*)$/);
+      if (parts) {
+        req.cookies[parts[1].trim()] = (parts[2] || '').trim();
+      }
+    });
+  }
+  next();
+});
+
+// CSRF protection will be enabled after testing other security features
 // app.use(csurf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' } }));
 
 // Expose CSRF token for client to use in requests (temporarily mocked)
@@ -30,15 +60,69 @@ if (process.env.NODE_ENV === 'production') {
     }
     res.redirect(301, `https://${req.headers.host}${req.url}`);
   });
-  // app.use(helmet.hsts({ maxAge: 31536000, includeSubDomains: true, preload: true }));
+  // HSTS already included in the manual security headers above
 }
 
-// Rate limiters (temporarily disabled)
-// const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
-// const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'Too many requests, please try again later.' });
-// app.use('/api/auth/login', authLimiter);
-// app.use('/api/auth/register', authLimiter);
-// app.use('/api/', apiLimiter);
+// Simple in-memory rate limiter implementation
+const requestCounts: Record<string, { count: number, resetTime: number }> = {};
+
+// API rate limiter middleware (100 requests per 15 minutes)
+const simpleApiLimiter = (req: Request, res: Response, next: NextFunction) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const maxRequests = 100;
+
+  // Initialize or reset if window expired
+  if (!requestCounts[ip] || now > requestCounts[ip].resetTime) {
+    requestCounts[ip] = { count: 1, resetTime: now + windowMs };
+    return next();
+  }
+
+  // Increment count and check limit
+  requestCounts[ip].count++;
+  if (requestCounts[ip].count <= maxRequests) {
+    return next();
+  }
+
+  // Rate limit exceeded
+  return res.status(429).json({
+    message: 'Too many requests, please try again later.',
+    retryAfter: Math.ceil((requestCounts[ip].resetTime - now) / 1000)
+  });
+};
+
+// Auth rate limiter middleware (5 requests per 15 minutes)
+const simpleAuthLimiter = (req: Request, res: Response, next: NextFunction) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const authKey = `auth_${ip}`;
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const maxRequests = 5;
+
+  // Initialize or reset if window expired
+  if (!requestCounts[authKey] || now > requestCounts[authKey].resetTime) {
+    requestCounts[authKey] = { count: 1, resetTime: now + windowMs };
+    return next();
+  }
+
+  // Increment count and check limit
+  requestCounts[authKey].count++;
+  if (requestCounts[authKey].count <= maxRequests) {
+    return next();
+  }
+
+  // Rate limit exceeded
+  return res.status(429).json({
+    message: 'Too many login attempts, please try again later.',
+    retryAfter: Math.ceil((requestCounts[authKey].resetTime - now) / 1000)
+  });
+};
+
+// Apply rate limiters to routes
+app.use('/api/login', simpleAuthLimiter);
+app.use('/api/register', simpleAuthLimiter);
+app.use('/api/', simpleApiLimiter);
 
 // Setup authentication
 setupAuth(app);
