@@ -11,10 +11,18 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  customHeaders?: HeadersInit,
 ): Promise<Response> {
+  const headers = new Headers(customHeaders);
+  
+  // Add Content-Type for JSON data
+  if (data) {
+    headers.set("Content-Type", "application/json");
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,6 +37,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // For GET requests, we don't need CSRF tokens, but we still include credentials
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
     });

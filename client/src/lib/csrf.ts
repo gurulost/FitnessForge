@@ -59,9 +59,8 @@ export function addCsrfHeader(headers: HeadersInit = {}): Promise<HeadersInit> {
 export async function apiRequestWithCsrf(
   method: string,
   endpoint: string,
-  body?: object,
-  customHeaders?: HeadersInit
+  body?: object
 ): Promise<Response> {
-  const headers = await addCsrfHeader(customHeaders);
+  const headers = await addCsrfHeader();
   return apiRequest(method, endpoint, body, headers);
 }

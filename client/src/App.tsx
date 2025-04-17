@@ -11,6 +11,7 @@ import Onboarding from "./pages/onboarding";
 import Login from "./pages/auth/login";
 import Register from "./pages/auth/register";
 import NotFound from "./pages/not-found";
+import CsrfTest from "./pages/csrf-test";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 

@@ -405,6 +405,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to answer fitness question' });
     }
   });
+  
+  // ==================== CSRF TEST ENDPOINT ====================
+  
+  // Test endpoint for CSRF protection
+  app.post('/api/csrf-test', (req: Request, res: Response) => {
+    res.json({
+      message: 'CSRF protection test successful',
+      receivedData: req.body,
+      timestamp: new Date().toISOString()
+    });
+  });
 
   return httpServer;
 }
