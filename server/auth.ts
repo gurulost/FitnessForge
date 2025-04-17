@@ -71,15 +71,16 @@ export function setupAuth(app: Express) {
     }),
   );
   
-  // Configure Google OAuth Strategy
-  passport.use(
-    new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        callbackURL: "/api/auth/google/callback",
-        scope: ["profile", "email"],
-      },
+  // Configure Google OAuth Strategy if credentials are available
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: "/api/auth/google/callback",
+          scope: ["profile", "email"],
+        },
       async (accessToken, refreshToken, profile, done) => {
         try {
           // Check if user already exists
