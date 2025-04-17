@@ -2,28 +2,25 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
-// Security packages are implemented manually to avoid type dependency issues
-
-// No need to extend the Request interface since we're using the built-in type
-// This avoids TypeScript errors during compilation
+// Security packages implemented manually to avoid dependency issues
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Security middlewares - disabled until type issues are resolved
-// Using manual security headers instead of helmet 
+// Security middlewares implemented manually
 app.use((req, res, next) => {
-  // Set security headers manually
+  // Set security headers manually (helmet replacement)
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.anthropic.com;");
+  
   next();
 });
 
-// Cookie parser implemented manually for now
+// Custom cookie parser middleware
 app.use((req, res, next) => {
   if (!req.cookies && req.headers.cookie) {
     req.cookies = {};
@@ -37,9 +34,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// CSRF protection will be enabled after testing other security features
-// app.use(csurf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' } }));
-
+// CSRF protection will be implemented later
 // Expose CSRF token for client to use in requests (temporarily mocked)
 app.get('/api/csrf-token', (req: Request, res: Response) => {
   res.json({ csrfToken: 'temp-csrf-token' });
@@ -53,14 +48,13 @@ if (process.env.NODE_ENV === 'production') {
     }
     res.redirect(301, `https://${req.headers.host}${req.url}`);
   });
-  // HSTS already included in the manual security headers above
 }
 
 // Simple in-memory rate limiter implementation
 const requestCounts: Record<string, { count: number, resetTime: number }> = {};
 
 // API rate limiter middleware (100 requests per 15 minutes)
-const simpleApiLimiter = (req: Request, res: Response, next: NextFunction) => {
+const apiRateLimiter = (req: Request, res: Response, next: NextFunction) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
   const windowMs = 15 * 60 * 1000; // 15 minutes
@@ -86,7 +80,7 @@ const simpleApiLimiter = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // Auth rate limiter middleware (5 requests per 15 minutes)
-const simpleAuthLimiter = (req: Request, res: Response, next: NextFunction) => {
+const authRateLimiter = (req: Request, res: Response, next: NextFunction) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const authKey = `auth_${ip}`;
   const now = Date.now();
@@ -113,9 +107,9 @@ const simpleAuthLimiter = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // Apply rate limiters to routes
-app.use('/api/login', simpleAuthLimiter);
-app.use('/api/register', simpleAuthLimiter);
-app.use('/api/', simpleApiLimiter);
+app.use('/api/login', authRateLimiter);
+app.use('/api/register', authRateLimiter);
+app.use('/api/', apiRateLimiter);
 
 // Setup authentication
 setupAuth(app);
