@@ -305,7 +305,11 @@ export class MemStorage implements IStorage {
   async getProgressPhotosByUserId(userId: number): Promise<ProgressPhoto[]> {
     return Array.from(this.progressPhotos.values())
       .filter((photo) => photo.userId === userId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        const dateA = a.date instanceof Date ? a.date : new Date();
+        const dateB = b.date instanceof Date ? b.date : new Date();
+        return dateB.getTime() - dateA.getTime();
+      });
   }
 
   async createProgressPhoto(photo: InsertProgressPhoto): Promise<ProgressPhoto> {
@@ -337,13 +341,31 @@ export class MemStorage implements IStorage {
   async getProgressMetricsByUserId(userId: number): Promise<ProgressMetrics[]> {
     return Array.from(this.progressMetrics.values())
       .filter((metrics) => metrics.userId === userId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        const dateA = a.date instanceof Date ? a.date : new Date();
+        const dateB = b.date instanceof Date ? b.date : new Date();
+        return dateB.getTime() - dateA.getTime();
+      });
   }
 
   async createProgressMetrics(metrics: InsertProgressMetrics): Promise<ProgressMetrics> {
     const id = this.progressMetricsId++;
     const date = new Date();
-    const newMetrics: ProgressMetrics = { ...metrics, id, date };
+    
+    // Initialize all fields explicitly to satisfy TypeScript
+    const newMetrics: ProgressMetrics = { 
+      id, 
+      userId: metrics.userId,
+      date,
+      weight: metrics.weight ?? null,
+      bodyFat: metrics.bodyFat ?? null,
+      chestMeasurement: metrics.chestMeasurement ?? null,
+      waistMeasurement: metrics.waistMeasurement ?? null,
+      hipsMeasurement: metrics.hipsMeasurement ?? null,
+      armsMeasurement: metrics.armsMeasurement ?? null,
+      thighsMeasurement: metrics.thighsMeasurement ?? null
+    };
+    
     this.progressMetrics.set(id, newMetrics);
     return newMetrics;
   }
