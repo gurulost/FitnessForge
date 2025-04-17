@@ -3,26 +3,23 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
 import { csrfProtection, csrfTokenRoute } from "./csrf";
-// Security packages implemented manually to avoid dependency issues
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Security middlewares implemented manually
-app.use((req, res, next) => {
-  // Set security headers manually (helmet replacement)
+// Security headers implemented manually - helmet replacement
+app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.anthropic.com;");
-  
   next();
 });
 
 // Custom cookie parser middleware
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   if (!req.cookies && req.headers.cookie) {
     req.cookies = {};
     req.headers.cookie.split(';').forEach(cookie => {
@@ -35,15 +32,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// CSRF protection implementation
-// Expose route to get a CSRF token
+// CSRF protection routes
 app.get('/api/csrf-token', csrfTokenRoute);
 
 // Apply CSRF protection to all mutating API routes
-// Skip the auth endpoints during login and registration to prevent lockout
+// Skip auth-related endpoints to prevent lockout
 app.use('/api', (req: Request, res: Response, next: NextFunction) => {
-  // Skip CSRF check for auth endpoints
-  if (req.path === '/login' || req.path === '/register' || req.path === '/auth/google' || req.path === '/auth/google/callback') {
+  // Skip CSRF check for auth endpoints and non-mutating methods
+  if (
+    req.path === '/login' || 
+    req.path === '/register' || 
+    req.path === '/auth/google' || 
+    req.path === '/auth/google/callback' ||
+    ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+  ) {
     return next();
   }
   
@@ -51,7 +53,7 @@ app.use('/api', (req: Request, res: Response, next: NextFunction) => {
   return csrfProtection()(req, res, next);
 });
 
-// Enforce HTTPS redirect in production
+// Enforce HTTPS in production
 if (process.env.NODE_ENV === 'production') {
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
@@ -120,12 +122,13 @@ const authRateLimiter = (req: Request, res: Response, next: NextFunction) => {
 // Apply rate limiters to routes
 app.use('/api/login', authRateLimiter);
 app.use('/api/register', authRateLimiter);
-app.use('/api/', apiRateLimiter);
+app.use('/api', apiRateLimiter); // Apply to all API routes
 
 // Setup authentication
 setupAuth(app);
 
-app.use((req, res, next) => {
+// Request logger middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -155,9 +158,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Start the server
 (async () => {
   const server = await registerRoutes(app);
 
+  // Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -166,18 +171,14 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup Vite in development or serve static files in production
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Start the server on port 5000
   const port = 5000;
   server.listen({
     port,
