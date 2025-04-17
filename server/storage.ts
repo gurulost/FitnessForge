@@ -142,7 +142,34 @@ export class MemStorage implements IStorage {
   async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
     const id = this.userProfileId++;
     const updatedAt = new Date();
-    const newProfile: UserProfile = { ...profile, id, updatedAt };
+    
+    // Initialize all nullable fields with null to satisfy TypeScript
+    const newProfile: UserProfile = { 
+      id, 
+      userId: profile.userId, 
+      age: profile.age ?? null,
+      sex: profile.sex ?? null,
+      heightFeet: profile.heightFeet ?? null,
+      heightInches: profile.heightInches ?? null,
+      weight: profile.weight ?? null,
+      fitnessLevel: profile.fitnessLevel ?? null,
+      primaryGoal: profile.primaryGoal ?? null,
+      workoutFrequency: profile.workoutFrequency ?? null,
+      preferredWorkoutType: profile.preferredWorkoutType ?? null,
+      equipmentAccess: profile.equipmentAccess ?? null,
+      medicalConditions: profile.medicalConditions ?? null,
+      bodyFat: profile.bodyFat ?? null,
+      bmi: profile.bmi ?? null,
+      restingHeartRate: profile.restingHeartRate ?? null,
+      maxBenchPress: profile.maxBenchPress ?? null,
+      maxSquat: profile.maxSquat ?? null,
+      mileTime: profile.mileTime ?? null,
+      dailyCalories: profile.dailyCalories ?? null,
+      proteinGoal: profile.proteinGoal ?? null,
+      waterIntake: profile.waterIntake ?? null,
+      updatedAt
+    };
+    
     this.userProfiles.set(id, newProfile);
     return newProfile;
   }
@@ -171,7 +198,22 @@ export class MemStorage implements IStorage {
     const id = this.workoutPlanId++;
     const createdAt = new Date();
     const updatedAt = new Date();
-    const newPlan: WorkoutPlan = { ...plan, id, createdAt, updatedAt };
+    
+    // Initialize all fields explicitly to satisfy TypeScript
+    const newPlan: WorkoutPlan = { 
+      id, 
+      userId: plan.userId, 
+      name: plan.name,
+      description: plan.description ?? null,
+      goal: plan.goal ?? null,
+      difficulty: plan.difficulty ?? null,
+      duration: plan.duration ?? null,
+      frequency: plan.frequency ?? null,
+      dailyRoutines: plan.dailyRoutines ?? null,
+      createdAt,
+      updatedAt
+    };
+    
     this.workoutPlans.set(id, newPlan);
     return newPlan;
   }
