@@ -98,6 +98,7 @@ function App() {
             <Route path="/progress" component={Progress} />
             <Route path="/exercise-library" component={ExerciseLibrary} />
             <Route path="/profile" component={Profile} />
+            <Route path="/csrf-test" component={CsrfTest} />
             <Route component={NotFound} />
           </Switch>
         </main>

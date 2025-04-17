@@ -37,6 +37,14 @@ export function Sidebar() {
         <NavLink href="/progress" current={location} icon="chart-line">Progress</NavLink>
         <NavLink href="/exercise-library" current={location} icon="running">Exercise Library</NavLink>
         <NavLink href="/profile" current={location} icon="cog">Profile</NavLink>
+        
+        {/* Admin/Dev Tools */}
+        <div className="mt-4 mb-2 px-4">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Developer Tools
+          </div>
+        </div>
+        <NavLink href="/csrf-test" current={location} icon="shield">CSRF Test</NavLink>
       </div>
       
       <div className="absolute bottom-0 w-64 p-6">
