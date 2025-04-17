@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
+import { csrfProtection, csrfTokenRoute } from "./csrf";
 // Security packages implemented manually to avoid dependency issues
 
 const app = express();
@@ -34,10 +35,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// CSRF protection will be implemented later
-// Expose CSRF token for client to use in requests (temporarily mocked)
-app.get('/api/csrf-token', (req: Request, res: Response) => {
-  res.json({ csrfToken: 'temp-csrf-token' });
+// CSRF protection implementation
+// Expose route to get a CSRF token
+app.get('/api/csrf-token', csrfTokenRoute);
+
+// Apply CSRF protection to all mutating API routes
+// Skip the auth endpoints during login and registration to prevent lockout
+app.use('/api', (req: Request, res: Response, next: NextFunction) => {
+  // Skip CSRF check for auth endpoints
+  if (req.path === '/login' || req.path === '/register' || req.path === '/auth/google' || req.path === '/auth/google/callback') {
+    return next();
+  }
+  
+  // Apply CSRF protection to all other API endpoints
+  return csrfProtection()(req, res, next);
 });
 
 // Enforce HTTPS redirect in production
