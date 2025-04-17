@@ -40,8 +40,8 @@ app.get('/api/csrf-token', csrfTokenRoute);
 app.use('/api', (req: Request, res: Response, next: NextFunction) => {
   // Skip CSRF check for auth endpoints and non-mutating methods
   if (
-    req.path === '/login' || 
-    req.path === '/register' || 
+    req.path === '/auth/login' || 
+    req.path === '/auth/register' || 
     req.path === '/auth/google' || 
     req.path === '/auth/google/callback' ||
     ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
@@ -120,8 +120,8 @@ const authRateLimiter = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // Apply rate limiters to routes
-app.use('/api/login', authRateLimiter);
-app.use('/api/register', authRateLimiter);
+app.use('/api/auth/login', authRateLimiter);
+app.use('/api/auth/register', authRateLimiter);
 app.use('/api', apiRateLimiter); // Apply to all API routes
 
 // Setup authentication

@@ -56,6 +56,18 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Set up serialization/deserialization outside of if block
+  passport.serializeUser((user, done) => done(null, user.id));
+  passport.deserializeUser(async (id: number, done) => {
+    try {
+      const user = await storage.getUser(id);
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
+  });
+
+  // Set up Local Strategy
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
@@ -70,6 +82,63 @@ export function setupAuth(app: Express) {
       }
     }),
   );
+
+  // Registration endpoint
+  app.post("/api/auth/register", async (req, res, next) => {
+    try {
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      const user = await storage.createUser({
+        ...req.body,
+        password: await hashPassword(req.body.password),
+      });
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        // Don't return the password hash in the response
+        const { password, ...userWithoutPassword } = user;
+        res.status(201).json(userWithoutPassword);
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Login endpoint
+  app.post("/api/auth/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: SelectUser | false, info: any) => {
+      if (err) return next(err);
+      if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+      req.login(user, (err: any) => {
+        if (err) return next(err);
+        // Don't return the password hash in the response
+        const { password, ...userWithoutPassword } = user;
+        res.status(200).json(userWithoutPassword);
+      });
+    })(req, res, next);
+  });
+
+  // Logout endpoint
+  app.post("/api/auth/logout", (req, res, next) => {
+    req.logout((err: any) => {
+      if (err) return next(err);
+      res.sendStatus(200);
+    });
+  });
+
+  // Get current user endpoint
+  app.get("/api/auth/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    // Don't return the password hash in the response
+    const { password, ...userWithoutPassword } = req.user as SelectUser;
+    res.json(userWithoutPassword);
+  });
 
   // Configure Google OAuth Strategy if credentials are available
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -113,69 +182,6 @@ export function setupAuth(app: Express) {
         }
       )
     );
-
-    passport.serializeUser((user, done) => done(null, user.id));
-    passport.deserializeUser(async (id: number, done) => {
-      try {
-        const user = await storage.getUser(id);
-        done(null, user);
-      } catch (error) {
-        done(error);
-      }
-    });
-
-    app.post("/api/auth/register", async (req, res, next) => {
-      try {
-        const existingUser = await storage.getUserByUsername(req.body.username);
-        if (existingUser) {
-          return res.status(400).json({ message: "Username already exists" });
-        }
-
-        const user = await storage.createUser({
-          ...req.body,
-          password: await hashPassword(req.body.password),
-        });
-
-        req.login(user, (err) => {
-          if (err) return next(err);
-          // Don't return the password hash in the response
-          const { password, ...userWithoutPassword } = user;
-          res.status(201).json(userWithoutPassword);
-        });
-      } catch (error) {
-        next(error);
-      }
-    });
-
-    app.post("/api/auth/login", (req, res, next) => {
-      passport.authenticate("local", (err: any, user: SelectUser | false, info: any) => {
-        if (err) return next(err);
-        if (!user) return res.status(401).json({ message: "Invalid credentials" });
-
-        req.login(user, (err: any) => {
-          if (err) return next(err);
-          // Don't return the password hash in the response
-          const { password, ...userWithoutPassword } = user;
-          res.status(200).json(userWithoutPassword);
-        });
-      })(req, res, next);
-    });
-
-    app.post("/api/auth/logout", (req, res, next) => {
-      req.logout((err: any) => {
-        if (err) return next(err);
-        res.sendStatus(200);
-      });
-    });
-
-    app.get("/api/auth/user", (req, res) => {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      // Don't return the password hash in the response
-      const { password, ...userWithoutPassword } = req.user as SelectUser;
-      res.json(userWithoutPassword);
-    });
 
     // Google OAuth routes
     app.get(
