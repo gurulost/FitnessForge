@@ -1,18 +1,11 @@
-import express, { type Request as ExpressRequest, Response, NextFunction } from "express";
+import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./auth";
-// Comment out security packages that need type declarations
-// We'll address their functionality with inline comments
-// import helmet from 'helmet';
-// import rateLimit from 'express-rate-limit';
-// import csurf from 'csurf';
-// import cookieParser from 'cookie-parser';
+// Security packages are implemented manually to avoid type dependency issues
 
-// Extend Express Request interface to include cookies
-interface Request extends ExpressRequest {
-  cookies?: Record<string, string>;
-}
+// No need to extend the Request interface since we're using the built-in type
+// This avoids TypeScript errors during compilation
 
 const app = express();
 app.use(express.json());
