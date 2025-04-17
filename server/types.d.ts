@@ -41,29 +41,3 @@ declare module 'express-rate-limit' {
   function rateLimit(options?: ExpressRateLimit.Options): RequestHandler;
   export = rateLimit;
 }
-
-// Helmet type definitions
-declare namespace Helmet {
-  interface HelmetOptions {
-    contentSecurityPolicy?: boolean | object;
-    crossOriginEmbedderPolicy?: boolean | object;
-    crossOriginOpenerPolicy?: boolean | object;
-    crossOriginResourcePolicy?: boolean | object;
-    dnsPrefetchControl?: boolean | object;
-    expectCt?: boolean | object;
-    frameguard?: boolean | object;
-    hidePoweredBy?: boolean | object;
-    hsts?: boolean | object;
-    ieNoOpen?: boolean | object;
-    noSniff?: boolean | object;
-    originAgentCluster?: boolean | object;
-    permittedCrossDomainPolicies?: boolean | object;
-    referrerPolicy?: boolean | object;
-    xssFilter?: boolean | object;
-  }
-}
-
-declare module 'helmet' {
-  function helmet(options?: Helmet.HelmetOptions): RequestHandler;
-  export = helmet;
-}
