@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User, CreateUserRequest, LoginRequest, UserProfile } from "../lib/types";
 import { apiRequest } from "../lib/queryClient";
+import { useEffect } from "react";
 
 export function useCurrentUser() {
   return useQuery<User | null>({
@@ -81,4 +82,28 @@ export function useFitnessQuestion(userId: number | undefined) {
       return res.json();
     },
   });
+}
+
+export function useGoogleLogin() {
+  const queryClient = useQueryClient();
+  
+  const initiateGoogleLogin = () => {
+    // Redirect to the Google OAuth route
+    window.location.href = '/api/auth/google';
+  };
+  
+  // Refresh user data after redirecting back from Google login
+  useEffect(() => {
+    // Check if the URL indicates a redirect from Google auth
+    const hasAuthCode = window.location.search.includes('code=');
+    
+    if (hasAuthCode) {
+      // Refresh user data
+      queryClient.invalidateQueries({
+        queryKey: ['/api/auth/user'],
+      });
+    }
+  }, [queryClient]);
+  
+  return { initiateGoogleLogin };
 }

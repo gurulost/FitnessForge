@@ -98,6 +98,12 @@ export class MemStorage implements IStorage {
       (user) => user.username === username,
     );
   }
+  
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.googleId === googleId,
+    );
+  }
 
   async createUser(user: InsertUser): Promise<User> {
     const id = this.userId++;
@@ -109,6 +115,7 @@ export class MemStorage implements IStorage {
       firstName: user.firstName ?? null,
       lastName: user.lastName ?? null,
       email: user.email ?? null,
+      googleId: user.googleId ?? null,
       isOnboarded: false,
       createdAt
     };
@@ -354,6 +361,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
+  }
+  
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.googleId, googleId));
     return result[0];
   }
 
