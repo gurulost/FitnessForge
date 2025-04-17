@@ -42,10 +42,18 @@ function App() {
         <Switch>
           <Route path="/auth/login" component={Login} />
           <Route path="/auth/register" component={Register} />
-          <Route path="*" component={() => {
-            setLocation("/auth/login");
-            return null;
-          }} />
+          <Route path="*">
+            {() => {
+              // Need to create a RedirectComponent to properly handle hooks
+              const RedirectComp = () => {
+                useEffect(() => {
+                  setLocation("/auth/login");
+                }, [setLocation]);
+                return null;
+              };
+              return <RedirectComp />;
+            }}
+          </Route>
         </Switch>
       </div>
     );
@@ -57,10 +65,18 @@ function App() {
       <div className="min-h-screen bg-gray-50">
         <Switch>
           <Route path="/onboarding" component={Onboarding} />
-          <Route path="*" component={() => {
-            setLocation("/onboarding");
-            return null;
-          }} />
+          <Route path="*">
+            {() => {
+              // Need to create a RedirectComponent to properly handle hooks
+              const RedirectComp = () => {
+                useEffect(() => {
+                  setLocation("/onboarding");
+                }, [setLocation]);
+                return null;
+              };
+              return <RedirectComp />;
+            }}
+          </Route>
         </Switch>
       </div>
     );
