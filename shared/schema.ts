@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   email: text("email"),
+  googleId: text("google_id").unique(),
   isOnboarded: boolean("is_onboarded").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });

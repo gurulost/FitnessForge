@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -69,6 +70,49 @@ export function setupAuth(app: Express) {
       }
     }),
   );
+  
+  // Configure Google OAuth Strategy
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        callbackURL: "/api/auth/google/callback",
+        scope: ["profile", "email"],
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          // Check if user already exists
+          let user = await storage.getUserByGoogleId(profile.id);
+          
+          // If user doesn't exist, create a new one
+          if (!user) {
+            const email = profile.emails && profile.emails[0].value;
+            const firstName = profile.name?.givenName || profile.displayName.split(' ')[0];
+            const lastName = profile.name?.familyName || '';
+            
+            // Generate a random password for the Google user
+            const randomPassword = randomBytes(16).toString('hex');
+            const hashedPassword = await hashPassword(randomPassword);
+            
+            // Create user with Google profile data
+            user = await storage.createUser({
+              username: email || `google_${profile.id}`,
+              password: hashedPassword,
+              email: email || null,
+              firstName: firstName || null,
+              lastName: lastName || null,
+              googleId: profile.id,
+            });
+          }
+          
+          return done(null, user);
+        } catch (error) {
+          return done(error as Error);
+        }
+      }
+    )
+  );
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
@@ -132,4 +176,22 @@ export function setupAuth(app: Express) {
     const { password, ...userWithoutPassword } = req.user as SelectUser;
     res.json(userWithoutPassword);
   });
+  
+  // Google OAuth routes
+  app.get(
+    "/api/auth/google",
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
+  
+  app.get(
+    "/api/auth/google/callback",
+    passport.authenticate("google", {
+      failureRedirect: "/auth/login",
+      session: true,
+    }),
+    (req, res) => {
+      // Successful authentication, redirect home
+      res.redirect("/");
+    }
+  );
 }
